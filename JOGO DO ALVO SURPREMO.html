@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Jogo do Alvo Supremo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+  
+  * { box-sizing: border-box; }
+  
+  body {
+    margin: 0; padding: 0; font-family: 'Orbitron', monospace;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; min-height: 100vh;
+    background: linear-gradient(45deg, #0f0f23, #1a1a2e, #16213e, #0f0f23);
+    background-size: 400% 400%;
+    animation: gradientShift 8s ease infinite;
+    color: #fff; overflow-x: hidden;
+  }
+  
+  @keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  
+  h1 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 900; text-transform: uppercase;
+    letter-spacing: 3px; margin-bottom: 10px;
+    background: linear-gradient(45deg, #ff6b6b, #ffd93d, #6bcf7f, #4ecdc4, #45b7d1);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gradientText 3s ease infinite;
+    text-shadow: 0 0 30px rgba(255,255,255,0.5);
+  }
+  
+  @keyframes gradientText {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  
+  .menu-screen {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 20px; padding: 40px;
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+  }
+  
+  .difficulty-buttons {
+    display: flex; gap: 15px; flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .btn {
+    padding: 12px 25px; border: none; border-radius: 12px;
+    font-family: 'Orbitron', monospace; font-weight: 700;
+    font-size: 14px; cursor: pointer; transition: all 0.3s ease;
+    text-transform: uppercase; letter-spacing: 1px;
+    position: relative; overflow: hidden;
+  }
+  
+  .btn:before {
+    content: ''; position: absolute; top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+  }
+  
+  .btn:hover:before { left: 100%; }
+  
+  .btn-easy {
+    background: linear-gradient(135deg, #72d572, #4ecdc4);
+    color: #fff; box-shadow: 0 8px 20px rgba(114, 213, 114, 0.4);
+  }
+  
+  .btn-medium {
+    background: linear-gradient(135deg, #ffd93d, #ff6b6b);
+    color: #fff; box-shadow: 0 8px 20px rgba(255, 217, 61, 0.4);
+  }
+  
+  .btn-hard {
+    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+    color: #fff; box-shadow: 0 8px 20px rgba(255, 107, 107, 0.4);
+  }
+  
+  .btn-insane {
+    background: linear-gradient(135deg, #8e2de2, #4a00e0);
+    color: #fff; box-shadow: 0 8px 20px rgba(142, 45, 226, 0.4);
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+  
+  .btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 25px rgba(0,0,0,0.3);
+  }
+  
+  .game-screen {
+    display: none; width: 100%; max-width: 1200px;
+    padding: 20px;
+  }
+  
+  .game-header {
+    display: flex; justify-content: space-between;
+    align-items: center; margin-bottom: 20px;
+    flex-wrap: wrap; gap: 15px;
+  }
+  
+  .stats {
+    display: flex; gap: 30px; flex-wrap: wrap;
+  }
+  
+  .stat {
+    text-align: center; padding: 10px 20px;
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.2);
+    min-width: 100px;
+  }
+  
+  .stat-value {
+    display: block; font-size: 24px; font-weight: 900;
+    color: #ffd93d;
+  }
+  
+  .stat-label {
+    font-size: 12px; color: #bbb;
+    text-transform: uppercase;
+  }
+  
+  #game-area {
+    position: relative;
+    width: 100%; height: 70vh; min-height: 400px;
+    background: radial-gradient(ellipse at center, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+    border-radius: 20px; overflow: hidden;
+    box-shadow: 0 0 50px rgba(0,0,0,0.5), inset 0 0 50px rgba(255,255,255,0.05);
+    border: 2px solid rgba(255,255,255,0.1);
+  }
+  
+  .target {
+    position: absolute; border-radius: 50%;
+    cursor: pointer; user-select: none;
+    transition: transform 0.15s ease;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; color: #fff;
+    text-shadow: 0 0 10px rgba(0,0,0,0.8);
+  }
+  
+  .target:hover { transform: scale(1.1); }
+  .target:active { transform: scale(0.9); }
+  
+  .target-normal {
+    background: radial-gradient(circle at 30% 30%, #ff6b6b, #ee5a24);
+    box-shadow: 0 0 20px rgba(255, 107, 107, 0.6);
+  }
+  
+  .target-bonus {
+    background: radial-gradient(circle at 30% 30%, #ffd93d, #f39c12);
+    box-shadow: 0 0 25px rgba(255, 217, 61, 0.8);
+    animation: bonusPulse 1s infinite;
+  }
+  
+  @keyframes bonusPulse {
+    0%, 100% { box-shadow: 0 0 25px rgba(255, 217, 61, 0.8); }
+    50% { box-shadow: 0 0 35px rgba(255, 217, 61, 1); }
+  }
+  
+  .target-speed {
+    background: radial-gradient(circle at 30% 30%, #4ecdc4, #00b894);
+    box-shadow: 0 0 20px rgba(78, 205, 196, 0.6);
+  }
+  
+  .target-bomb {
+    background: radial-gradient(circle at 30% 30%, #2d3436, #636e72);
+    box-shadow: 0 0 20px rgba(45, 52, 54, 0.8);
+    animation: shake 0.5s infinite;
+  }
+  
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-2px); }
+    75% { transform: translateX(2px); }
+  }
+  
+  .score-popup {
+    position: absolute; pointer-events: none;
+    font-weight: 900; font-size: 24px;
+    animation: scorePopup 1s ease forwards;
+    z-index: 1000;
+  }
+  
+  @keyframes scorePopup {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-50px) scale(1.5); }
+  }
+  
+  .combo {
+    position: absolute; top: 20px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 20px; font-weight: 900;
+    color: #ffd93d; opacity: 0;
+    transition: opacity 0.3s ease;
+    text-shadow: 0 0 10px rgba(255, 217, 61, 0.8);
+  }
+  
+  .combo.show { opacity: 1; }
+  
+  .pause-overlay {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.8);
+    display: none; align-items: center; justify-content: center;
+    backdrop-filter: blur(10px);
+    z-index: 2000;
+  }
+  
+  .pause-menu {
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(20px);
+    border-radius: 20px; padding: 40px;
+    border: 1px solid rgba(255,255,255,0.2);
+    text-align: center;
+  }
+  
+  .power-bar {
+    width: 200px; height: 10px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 5px; overflow: hidden;
+    margin: 10px auto;
+  }
+  
+  .power-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #72d572, #ffd93d, #ff6b6b);
+    transition: width 0.3s ease;
+  }
+  
+  .mobile-controls {
+    display: none; margin-top: 20px;
+    justify-content: center; gap: 15px;
+  }
+  
+  @media (max-width: 768px) {
+    .mobile-controls { display: flex; }
+    .stats { justify-content: center; }
+    .game-header { justify-content: center; text-align: center; }
+    h1 { font-size: 2rem; }
+  }
+  
+  .streak-indicator {
+    position: absolute; top: 60px; left: 50%;
+    transform: translateX(-50%);
+    padding: 5px 15px;
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  .streak-indicator.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<h1>🎯 JOGO DO ALVO SUPREMO</h1>
+
+<div class="menu-screen" id="menu">
+  <h2>Escolha sua Dificuldade</h2>
+  <div class="difficulty-buttons">
+    <button class="btn btn-easy" onclick="startGame('easy')">🟢 Fácil</button>
+    <button class="btn btn-medium" onclick="startGame('medium')">🟡 Médio</button>
+    <button class="btn btn-hard" onclick="startGame('hard')">🔴 Difícil</button>
+    <button class="btn btn-insane" onclick="startGame('insane')">⚡ Insano</button>
+  </div>
+  
+  <div style="margin-top: 30px; text-align: center; color: #bbb;">
+    <h3>Como Jogar:</h3>
+    <p>🎯 Alvos vermelhos = +1 ponto</p>
+    <p>⭐ Alvos dourados = +5 pontos</p>
+    <p>💨 Alvos azuis = +2 pontos + velocidade</p>
+    <p>💣 Alvos pretos = -10 pontos (evite!)</p>
+    <p>🔥 Faça combos para multiplicar pontos!</p>
+  </div>
+</div>
+
+<div class="game-screen" id="gameScreen">
+  <div class="game-header">
+    <div class="stats">
+      <div class="stat">
+        <span class="stat-value" id="score">0</span>
+        <span class="stat-label">Pontuação</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="timer">60</span>
+        <span class="stat-label">Tempo</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="hits">0</span>
+        <span class="stat-label">Acertos</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="accuracy">100%</span>
+        <span class="stat-label">Precisão</span>
+      </div>
+    </div>
+    
+    <div>
+      <button class="btn btn-medium" onclick="pauseGame()" id="pauseBtn">⏸️ Pausar</button>
+      <button class="btn btn-hard" onclick="endGame()">🏠 Menu</button>
+    </div>
+  </div>
+  
+  <div id="game-area">
+    <div class="combo" id="combo">COMBO!</div>
+    <div class="streak-indicator" id="streak">🔥 Sequência: 0</div>
+    
+    <div class="pause-overlay" id="pauseOverlay">
+      <div class="pause-menu">
+        <h2>Jogo Pausado</h2>
+        <div class="power-bar">
+          <div class="power-fill" id="powerFill"></div>
+        </div>
+        <p>Poder Especial</p>
+        <button class="btn btn-easy" onclick="resumeGame()">▶️ Continuar</button>
+        <button class="btn btn-hard" onclick="endGame()">🏠 Menu Principal</button>
+      </div>
+    </div>
+  </div>
+  
+  <div class="mobile-controls">
+    <button class="btn btn-medium" onclick="pauseGame()">⏸️</button>
+    <button class="btn btn-easy" onclick="activatePowerUp()">⚡ Poder</button>
+    <button class="btn btn-hard" onclick="endGame()">🏠</button>
+  </div>
+</div>
+
+<script>
+const gameStates = {
+  menu: document.getElementById('menu'),
+  game: document.getElementById('gameScreen')
+};
+
+let gameConfig = {
+  difficulty: 'medium',
+  duration: 60,
+  targetSpeed: 2000,
+  targetSize: 60,
+  spawnRate: 1500,
+  bonusChance: 0.15,
+  bombChance: 0.05
+};
+
+let gameData = {
+  score: 0,
+  hits: 0,
+  misses: 0,
+  timeLeft: 60,
+  combo: 0,
+  streak: 0,
+  power: 0,
+  isPlaying: false,
+  isPaused: false,
+  timerId: null,
+  spawnerId: null,
+  targets: []
+};
+
+const difficulties = {
+  easy: { duration: 90, targetSpeed: 3000, targetSize: 80, spawnRate: 2000, bonusChance: 0.2, bombChance: 0.02 },
+  medium: { duration: 60, targetSpeed: 2000, targetSize: 60, spawnRate: 1500, bonusChance: 0.15, bombChance: 0.05 },
+  hard: { duration: 45, targetSpeed: 1200, targetSize: 45, spawnRate: 1000, bonusChance: 0.1, bombChance: 0.08 },
+  insane: { duration: 30, targetSpeed: 800, targetSize: 30, spawnRate: 600, bonusChance: 0.08, bombChance: 0.12 }
+};
+
+function startGame(difficulty) {
+  gameConfig = { ...difficulties[difficulty] };
+  gameData = {
+    score: 0, hits: 0, misses: 0, timeLeft: gameConfig.duration,
+    combo: 0, streak: 0, power: 0, isPlaying: true, isPaused: false,
+    timerId: null, spawnerId: null, targets: []
+  };
+  
+  gameStates.menu.style.display = 'none';
+  gameStates.game.style.display = 'block';
+  
+  updateDisplay();
+  startGameLoop();
+}
+
+function startGameLoop() {
+  gameData.timerId = setInterval(updateTimer, 1000);
+  gameData.spawnerId = setInterval(spawnTarget, gameConfig.spawnRate);
+  spawnTarget();
+}
+
+function spawnTarget() {
+  if (!gameData.isPlaying || gameData.isPaused) return;
+  
+  const gameArea = document.getElementById('game-area');
+  const target = document.createElement('div');
+  
+  // Determinar tipo de alvo
+  let targetType = 'normal';
+  const rand = Math.random();
+  
+  if (rand < gameConfig.bombChance) targetType = 'bomb';
+  else if (rand < gameConfig.bombChance + gameConfig.bonusChance) targetType = 'bonus';
+  else if (rand < gameConfig.bombChance + gameConfig.bonusChance + 0.1) targetType = 'speed';
+  
+  target.className = `target target-${targetType}`;
+  target.style.width = gameConfig.targetSize + 'px';
+  target.style.height = gameConfig.targetSize + 'px';
+  
+  // Posicionamento
+  const maxX = gameArea.clientWidth - gameConfig.targetSize;
+  const maxY = gameArea.clientHeight - gameConfig.targetSize;
+  target.style.left = Math.random() * maxX + 'px';
+  target.style.top = Math.random() * maxY + 'px';
+  
+  // Texto do alvo
+  const texts = {
+    normal: '+1',
+    bonus: '+5',
+    speed: '+2',
+    bomb: '💣'
+  };
+  target.textContent = texts[targetType];
+  
+  // Event listeners
+  target.addEventListener('click', () => hitTarget(target, targetType));
+  
+  // Auto-removal
+  setTimeout(() => {
+    if (target.parentNode) {
+      target.remove();
+      if (targetType !== 'bomb') {
+        gameData.misses++;
+        resetCombo();
+      }
+    }
+  }, gameConfig.targetSpeed);
+  
+  gameArea.appendChild(target);
+  gameData.targets.push(target);
+}
+
+function hitTarget(target, type) {
+  if (!gameData.isPlaying || gameData.isPaused) return;
+  
+  const rect = target.getBoundingClientRect();
+  const gameAreaRect = document.getElementById('game-area').getBoundingClientRect();
+  
+  let points = 0;
+  let color = '#fff';
+  
+  switch(type) {
+    case 'normal':
+      points = 1 + gameData.combo;
+      color = '#ff6b6b';
+      gameData.streak++;
+      break;
+    case 'bonus':
+      points = 5 + gameData.combo * 2;
+      color = '#ffd93d';
+      gameData.streak++;
+      gameData.power += 10;
+      break;
+    case 'speed':
+      points = 2 + gameData.combo;
+      color = '#4ecdc4';
+      gameData.streak++;
+      gameConfig.spawnRate = Math.max(300, gameConfig.spawnRate - 50);
+      clearInterval(gameData.spawnerId);
+      gameData.spawnerId = setInterval(spawnTarget, gameConfig.spawnRate);
+      break;
+    case 'bomb':
+      points = -10;
+      color = '#ff4757';
+      gameData.streak = 0;
+      resetCombo();
+      break;
+  }
+  
+  gameData.score = Math.max(0, gameData.score + points);
+  gameData.hits++;
+  
+  // Atualizar combo
+  if (type !== 'bomb') {
+    gameData.combo = Math.min(10, Math.floor(gameData.streak / 3));
+    showCombo();
+  }
+  
+  // Popup de pontuação
+  showScorePopup(rect.left - gameAreaRect.left, rect.top - gameAreaRect.top, points, color);
+  
+  // Atualizar poder
+  gameData.power = Math.min(100, gameData.power + (type === 'bomb' ? -20 : 5));
+  
+  target.remove();
+  updateDisplay();
+}
+
+function showScorePopup(x, y, points, color) {
+  const popup = document.createElement('div');
+  popup.className = 'score-popup';
+  popup.textContent = (points > 0 ? '+' : '') + points;
+  popup.style.left = x + 'px';
+  popup.style.top = y + 'px';
+  popup.style.color = color;
+  
+  document.getElementById('game-area').appendChild(popup);
+  
+  setTimeout(() => popup.remove(), 1000);
+}
+
+function showCombo() {
+  const comboEl = document.getElementById('combo');
+  const streakEl = document.getElementById('streak');
+  
+  if (gameData.combo > 0) {
+    comboEl.textContent = `🔥 COMBO x${gameData.combo + 1}!`;
+    comboEl.classList.add('show');
+    setTimeout(() => comboEl.classList.remove('show'), 2000);
+  }
+  
+  if (gameData.streak > 2) {
+    streakEl.textContent = `🔥 Sequência: ${gameData.streak}`;
+    streakEl.classList.add('show');
+  } else {
+    streakEl.classList.remove('show');
+  }
+}
+
+function resetCombo() {
+  gameData.combo = 0;
+  gameData.streak = 0;
+  document.getElementById('streak').classList.remove('show');
+}
+
+function updateDisplay() {
+  document.getElementById('score').textContent = gameData.score;
+  document.getElementById('timer').textContent = gameData.timeLeft;
+  document.getElementById('hits').textContent = gameData.hits;
+  
+  const accuracy = gameData.hits + gameData.misses > 0 
+    ? Math.round((gameData.hits / (gameData.hits + gameData.misses)) * 100)
+    : 100;
+  document.getElementById('accuracy').textContent = accuracy + '%';
+  
+  // Atualizar barra de poder
+  document.getElementById('powerFill').style.width = gameData.power + '%';
+}
+
+function updateTimer() {
+  if (gameData.isPaused) return;
+  
+  gameData.timeLeft--;
+  updateDisplay();
+  
+  if (gameData.timeLeft <= 0) {
+    endGame();
+  }
+}
+
+function pauseGame() {
+  if (!gameData.isPlaying) return;
+  
+  gameData.isPaused = !gameData.isPaused;
+  document.getElementById('pauseOverlay').style.display = gameData.isPaused ? 'flex' : 'none';
+  document.getElementById('pauseBtn').textContent = gameData.isPaused ? '▶️ Continuar' : '⏸️ Pausar';
+}
+
+function resumeGame() {
+  gameData.isPaused = false;
+  document.getElementById('pauseOverlay').style.display = 'none';
+  document.getElementById('pauseBtn').textContent = '⏸️ Pausar';
+}
+
+function activatePowerUp() {
+  if (gameData.power >= 100) {
+    gameData.power = 0;
+    // Remover todos os alvos bomb e dar pontos bonus
+    const bombs = document.querySelectorAll('.target-bomb');
+    bombs.forEach(bomb => {
+      bomb.remove();
+      gameData.score += 20;
+    });
+    
+    // Spawn múltiplos alvos bonus
+    for (let i = 0; i < 5; i++) {
+      setTimeout(() => {
+        if (gameData.isPlaying) spawnTarget();
+      }, i * 200);
+    }
+    
+    updateDisplay();
+  }
+}
+
+function endGame() {
+  gameData.isPlaying = false;
+  clearInterval(gameData.timerId);
+  clearInterval(gameData.spawnerId);
+  
+  // Limpar todos os alvos
+  document.querySelectorAll('.target').forEach(target => target.remove());
+  
+  const finalAccuracy = gameData.hits + gameData.misses > 0 
+    ? Math.round((gameData.hits / (gameData.hits + gameData.misses)) * 100)
+    : 100;
+  
+  alert(`🎯 Fim de Jogo!\n\n📊 Pontuação Final: ${gameData.score}\n🎯 Acertos: ${gameData.hits}\n🎪 Precisão: ${finalAccuracy}%\n🔥 Melhor Sequência: ${Math.max(...(gameData.streakHistory || [gameData.streak]))}`);
+  
+  gameStates.game.style.display = 'none';
+  gameStates.menu.style.display = 'flex';
+}
+
+// Event listeners
+document.getElementById('game-area').addEventListener('click', (e) => {
+  if (e.target.id === 'game-area') {
+    gameData.misses++;
+    resetCombo();
+    updateDisplay();
+  }
+});
+
+// Controles de teclado
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+    if (gameData.isPlaying) pauseGame();
+  }
+  if (e.code === 'KeyP' && gameData.power >= 100) {
+    activatePowerUp();
+  }
+});
+
+</script>
+
+</body>
+</html>
